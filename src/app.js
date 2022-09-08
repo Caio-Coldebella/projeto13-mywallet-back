@@ -77,16 +77,36 @@ app.post('/sign-up', async (req,res)=>{
     }
 });
 
+app.get('/home',async (req,res)=>{
+    const auth = req.headers.authentication.replace('Bearer ','');
+    try {
+        const userid = await db.collection("sessions").find({token: auth}).toArray();
+        if(userid.length === 0){
+            res.sendStatus(404);
+            return;
+        }
+        const id = userid[0].userId;
+        const name = await db.collection("users").find({_id: id}).toArray();
+        const userdata = await db.collection("wallet").find({name: name[0].name}).toArray();
+        res.status(200).send(userdata[0]);
+    } catch (error) {
+        console.error(error);
+        res.sendStatus(500);
+    }
+});
+
 app.post('/status', async (req,res)=>{
     const obj = req.body.token;
     const token = obj.replace('Bearer ','');
     try {
         await db.collection("sessions").updateOne({token: token},{$set:{lastStatus: Date.now()}});
+        res.sendStatus(200);
     } catch (error) {
         res.sendStatus(500);
         console.error(error)
     }
 });
+
 
 app.listen(5000, ()=>{
     console.log("Server running on port 5000")
