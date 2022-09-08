@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import cors from "cors";
 import { v4 as uuid } from 'uuid';
 import Joi from "joi";
+import dayjs from "dayjs";
 
 dotenv.config();
 
@@ -19,6 +20,35 @@ app.use(express.json());
 app.use(cors());
 
 //Routes
+app.post('/', async (req,res)=>{
+    const obj = req.body;
+    const postSchema = Joi.object({
+        email: Joi.string().email({ tlds: { allow: false } }),
+        password: Joi.string().min(1).required()
+    });
+    const validate = postSchema.validate(obj);
+    if(validate.error){
+        res.sendStatus(400);
+        return;
+    }
+    try {
+        const user = await db.collection("users").find({email: obj.email}).toArray();
+        if(user.length === 0 || !bcrypt.compareSync(obj.password,user[0].password)){
+            res.sendStatus(404);
+            return;
+        }
+        const token = uuid();
+        await db.collection("sessions").insertOne({ 
+          token: token,
+          userId: user[0]._id,
+          lastStatus: Date.now()
+        });
+        res.status(200).send(token);
+    } catch (error) {
+        res.sendStatus(500);
+        console.error(error);
+    }
+});
 
 app.post('/sign-up', async (req,res)=>{
     const obj = req.body;
@@ -47,6 +77,16 @@ app.post('/sign-up', async (req,res)=>{
     }
 });
 
+app.post('/status', async (req,res)=>{
+    const obj = req.body.token;
+    const token = obj.replace('Bearer ','');
+    try {
+        await db.collection("sessions").updateOne({token: token},{$set:{lastStatus: Date.now()}});
+    } catch (error) {
+        res.sendStatus(500);
+        console.error(error)
+    }
+});
 
 app.listen(5000, ()=>{
     console.log("Server running on port 5000")
