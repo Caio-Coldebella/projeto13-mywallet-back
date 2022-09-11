@@ -78,6 +78,7 @@ app.post('/sign-up', async (req,res)=>{
         }
         const hashpass = bcrypt.hashSync(obj.password,10);
         await db.collection("users").insertOne({name: obj.name, email: obj.email, password: hashpass});
+        await db.collection("wallet").insertOne({name: obj.name, total: 0, transactions: []});
         res.sendStatus(201);
     } catch (error) {
         res.sendStatus(500);
