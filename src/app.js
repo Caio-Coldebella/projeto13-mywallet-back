@@ -19,6 +19,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+setInterval(()=>{removeinative()},30000);
+
 function sumwallet(arr){
     let sum = 0;
     for(let i=0; i<arr.length; i++){
@@ -27,6 +29,21 @@ function sumwallet(arr){
     return sum;
 }
 
+async function removeinative(){
+    const actual = Date.now();
+    try {
+        const arr = await db.collection("sessions").find().toArray();
+        for(let i=0; i<arr.length;i++){
+            const past = Number(arr[i].lastStatus)
+            const diff = Math.abs(actual - past)/1000; 
+            if(diff > 20){
+                await db.collection("sessions").deleteOne({_id: arr[i]._id});
+            }
+        }
+    } catch (error) {
+        return;
+    }
+}
 //Routes
 app.post('/', async (req,res)=>{
     const obj = req.body;
@@ -182,7 +199,6 @@ app.post('/status', async (req,res)=>{
         console.error(error)
     }
 });
-
 
 app.listen(5000, ()=>{
     console.log("Server running on port 5000")
