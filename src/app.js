@@ -137,6 +137,40 @@ app.post('/home/new-earn', async (req,res)=>{
     }
 });
 
+app.post('/home/new-debt', async (req,res)=>{
+    const auth = req.headers.authentication.replace('Bearer ','');
+    const obj = req.body;
+    const posttransactionSchema = Joi.object({
+        name: Joi.string().min(1).required(),
+        date: Joi.date().required(),
+        value: Joi.number().required()
+    });
+    const validate = posttransactionSchema.validate(obj);
+    if(validate.error){
+        res.sendStatus(400);
+        return;
+    }
+    obj.value *= -1;
+    try {
+        const userid = await db.collection("sessions").find({token: auth}).toArray();
+        if(userid.length === 0){
+            res.sendStatus(404);
+            return;
+        }
+        const id = userid[0].userId;
+        const name = await db.collection("users").find({_id: id}).toArray();
+        const userdata = await db.collection("wallet").find({name: name[0].name}).toArray();
+        const transact = userdata[0].transactions;
+        transact.push(obj);
+        const totalwallet  = sumwallet(transact)
+        await db.collection("wallet").updateOne({_id: userdata[0]._id},{$set:{transactions: transact,total: totalwallet}});
+        res.sendStatus(200);
+    } catch (error) {
+        console.error(error);
+        res.sendStatus(500);
+    }
+});
+
 app.post('/status', async (req,res)=>{
     const obj = req.body.token;
     const token = obj.replace('Bearer ','');
