@@ -6,7 +6,7 @@ export default async function postvalueMiddleware(req,res,next){
     const obj = req.body;
     const posttransactionSchema = Joi.object({
         name: Joi.string().min(1).required(),
-        date: Joi.date().required(),
+        date: Joi.string().required(),
         value: Joi.number().required()
     });
     const validate = posttransactionSchema.validate(obj);
